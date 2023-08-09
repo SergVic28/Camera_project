@@ -1,0 +1,61 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+calib_path = ''
+Kl = np.loadtxt(calib_path + './capture/leftcameraMatrix.txt', delimiter=',')
+Kr = np.loadtxt(calib_path + './capture/rightcameraMatrix.txt', delimiter=',')
+Dl = np.loadtxt(calib_path + './capture/leftdistCoeffs.txt', delimiter=',')
+Dr = np.loadtxt(calib_path + './capture/rightdistCoeffs.txt', delimiter=',')
+R = np.loadtxt(calib_path + './capture/rotation.txt', delimiter=',')
+T = np.loadtxt(calib_path + './capture/translation.txt', delimiter=',')
+img_size = (640, 480)
+data = np.load('./capture/leftcameraMatrix.txt')
+left_img = cv2.imread('./objectLeft/image_Left.jpg')
+right_img = cv2.imread('./objectRight/image_Right.jpg')
+
+R1, R2, P1, P2, Q, validRoi1, validRoi2 = cv2.stereoRectify(Kl, Dl, Kr, Dr, img_size, R, T)
+print(Q)
+xmap1, ymap1 = cv2.initUndistortRectifyMap(Kl, Dl, R1, Kl, img_size, cv2.CV_32FC1)
+xmap2, ymap2 = cv2.initUndistortRectifyMap(Kr, Dr, R2, Kr, img_size, cv2.CV_32FC1)
+
+left_img_rectified = cv2.remap(left_img, xmap1, ymap1, cv2.INTER_LINEAR)
+right_img_rectified = cv2.remap(right_img, xmap2, ymap2, cv2.INTER_LINEAR)
+
+# plt.figure(0, figsize=(12, 8))
+# plt.subplot(221)
+# plt.title('left original')
+# plt.imshow(left_img, cmap='gray')
+# plt.subplot(222)
+# plt.title('right original')
+# plt.imshow(right_img, cmap='gray')
+# plt.subplot(223)
+# plt.title('left rectified')
+# plt.imshow(left_img_rectified, cmap='gray')
+# plt.subplot(224)
+# plt.title('right rectified')
+# plt.imshow(right_img_rectified, cmap='gray')
+# plt.tight_layout()
+# plt.show()
+
+stereo_bm = cv2.StereoBM_create(numDisparities=16, blockSize=15)
+dispmap_bm = stereo_bm.compute(cv2.cvtColor(left_img_rectified, cv2.COLOR_BGR2GRAY),
+                               cv2.cvtColor(right_img_rectified, cv2.COLOR_BGR2GRAY))
+print(dispmap_bm)
+stereo_sgbm = cv2.StereoSGBM_create(minDisparity=0, numDisparities=16, blockSize=15)
+dispmap_sgbm = stereo_sgbm.compute(left_img_rectified, right_img_rectified)
+
+plt.figure(figsize=(12, 8))
+plt.subplot(221)
+plt.title('left')
+plt.imshow(left_img_rectified[:, :, [2, 1, 0]])
+plt.subplot(222)
+plt.title('right')
+plt.imshow(right_img_rectified[:, :, [2, 1, 0]])
+plt.subplot(223)
+plt.title('BM')
+plt.imshow(dispmap_bm, cmap='gray')
+plt.subplot(224)
+plt.title('SGBM')
+plt.imshow(dispmap_sgbm, cmap='gray')
+plt.show()
